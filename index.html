@@ -1,0 +1,2769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legacy Investing - Path Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <!-- Markdown parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --forest-deep: #051a14;
+            --forest-dark: #0a3d2f;
+            --forest-mid: #0f4c3a;
+            --forest-light: #1a7a5e;
+            --gold: #d4af37;
+            --gold-light: #e8c959;
+            --gold-pale: #f5e6b3;
+            --cream: #faf8f3;
+            --off-white: #f5f3ee;
+            --charcoal: #1a1a1a;
+            --slate: #4a5568;
+            --mist: rgba(255,255,255,0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--forest-deep);
+            color: var(--cream);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Main Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 40px 60px;
+            overflow-y: auto;
+            position: relative;
+            height: 100vh;
+        }
+
+        /* Gradient orbs */
+        .main-content::before {
+            content: '';
+            position: absolute;
+            top: -200px;
+            left: -200px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .main-content::after {
+            content: '';
+            position: absolute;
+            bottom: -100px;
+            right: 200px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(26,122,94,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 50px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .header-eyebrow::before {
+            content: '';
+            width: 40px;
+            height: 1px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+        }
+
+        .header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 56px;
+            font-weight: 500;
+            line-height: 1.1;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--cream) 0%, var(--gold-pale) 50%, var(--cream) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-subtitle {
+            font-size: 17px;
+            color: rgba(255,255,255,0.55);
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .header-subtitle strong {
+            color: var(--gold);
+            font-weight: 500;
+        }
+
+        /* Path Cards Container */
+        .paths-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Individual Path Card */
+        .path-card {
+            background: linear-gradient(135deg, rgba(15,76,58,0.4) 0%, rgba(10,61,47,0.6) 100%);
+            border: 1px solid rgba(212,175,55,0.15);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .path-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .path-card:hover::before,
+        .path-card.expanded::before {
+            opacity: 1;
+        }
+
+        .path-card:hover {
+            border-color: rgba(212,175,55,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .path-card.expanded {
+            border-color: rgba(212,175,55,0.4);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+        }
+
+        /* Path Header */
+        .path-header {
+            padding: 28px 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            position: relative;
+        }
+
+        .path-badge {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--forest-deep);
+            flex-shrink: 0;
+            box-shadow: 0 8px 24px rgba(212,175,55,0.3);
+        }
+
+        .path-info {
+            flex: 1;
+        }
+
+        .path-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--cream);
+            margin-bottom: 4px;
+        }
+
+        .path-tagline {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .path-meta {
+            display: flex;
+            gap: 20px;
+            margin-left: auto;
+        }
+
+        .meta-item {
+            text-align: center;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+        }
+
+        .meta-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .meta-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .expand-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .expand-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--gold);
+            transition: transform 0.3s ease;
+        }
+
+        .path-card.expanded .expand-icon svg {
+            transform: rotate(180deg);
+        }
+
+        /* Path Content */
+        .path-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .path-card.expanded .path-content {
+            max-height: 2000px;
+        }
+
+        .path-content-inner {
+            padding: 0 32px 32px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Deliverables Section */
+        .deliverables-section {
+            padding-top: 24px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gold);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(212,175,55,0.3), transparent);
+        }
+
+        .deliverables-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .deliverable-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 16px 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .deliverable-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--gold);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .deliverable-item:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(212,175,55,0.2);
+            transform: translateX(4px);
+        }
+
+        .deliverable-item:hover::before {
+            opacity: 1;
+        }
+
+        .deliverable-check {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--forest-mid), var(--forest-light));
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .deliverable-check svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--cream);
+        }
+
+        .deliverable-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.4;
+        }
+
+        .deliverable-value {
+            font-size: 11px;
+            color: var(--gold);
+            margin-top: 4px;
+        }
+
+        /* Pillars Section */
+        .pillars-section {
+            margin-top: 8px;
+        }
+
+        .pillars-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .pillars-grid.cols-5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .pillars-grid.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .pillars-grid.cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .pillar-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 14px;
+            padding: 20px 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pillar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--gold-light));
+        }
+
+        .pillar-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+        }
+
+        .pillar-num {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--gold);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .pillar-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--forest-mid);
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .pillar-desc {
+            font-size: 11px;
+            color: var(--slate);
+            line-height: 1.5;
+        }
+
+        /* Expanded Pillar Detail */
+        .pillar-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .pillar-card.expanded .pillar-detail {
+            max-height: 200px;
+        }
+
+        .pillar-detail-inner {
+            padding-top: 12px;
+            margin-top: 12px;
+            border-top: 1px solid rgba(15,76,58,0.15);
+        }
+
+        .pillar-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--charcoal);
+            margin-bottom: 6px;
+        }
+
+        .pillar-detail-item::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            background: var(--forest-light);
+            border-radius: 50%;
+        }
+
+        /* Includes Badge */
+        .includes-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(212,175,55,0.1);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: var(--gold);
+        }
+
+        .includes-badge svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Comparison Section at Bottom */
+        .comparison-section {
+            margin-top: 50px;
+            background: linear-gradient(135deg, rgba(15,76,58,0.3) 0%, rgba(10,61,47,0.5) 100%);
+            border: 1px solid rgba(212,175,55,0.15);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .comparison-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .comparison-header h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 36px;
+            font-weight: 500;
+            color: var(--cream);
+        }
+
+        .comparison-subtitle {
+            color: var(--gold);
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 8px;
+        }
+
+        /* Path Comparison Cards */
+        .path-comparison-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .path-compare-card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 16px;
+            padding: 28px 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .path-compare-card.featured {
+            box-shadow: 0 0 0 2px var(--gold);
+        }
+
+        .spots-badge {
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: var(--forest-mid);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 6px 12px;
+            border-radius: 4px;
+        }
+
+        .path-compare-header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--gold);
+            margin-bottom: 20px;
+        }
+
+        .path-compare-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--slate);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .path-compare-header h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--forest-deep);
+            line-height: 1.3;
+        }
+
+        .path-compare-includes {
+            text-align: center;
+            font-size: 13px;
+            font-style: italic;
+            color: var(--slate);
+            margin-bottom: 16px;
+        }
+
+        .path-compare-items {
+            flex: 1;
+        }
+
+        .path-compare-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: var(--charcoal);
+        }
+
+        .check-icon {
+            width: 20px;
+            height: 20px;
+            background: var(--forest-light);
+            color: white;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .path-compare-footer {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0,0,0,0.08);
+        }
+
+        .best-for-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--forest-mid);
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .path-compare-footer p {
+            font-size: 13px;
+            color: var(--slate);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 180px repeat(3, 1fr);
+            gap: 2px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .comparison-cell {
+            padding: 16px 20px;
+            background: rgba(5,26,20,0.8);
+        }
+
+        .comparison-cell.header {
+            background: rgba(15,76,58,0.6);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .comparison-cell.label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .comparison-cell.value {
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .comparison-cell .path-letter {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .comparison-cell .path-subtitle {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .comparison-check {
+            color: var(--forest-light);
+            font-size: 18px;
+        }
+
+        .comparison-highlight {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* Chat Sidebar - Desktop */
+        .chat-sidebar {
+            background: linear-gradient(180deg, #0d2d24 0%, var(--forest-deep) 100%);
+            border-left: 1px solid rgba(212,175,55,0.1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+            transition: width 0.3s ease, min-width 0.3s ease;
+            width: 400px;
+            min-width: 400px;
+        }
+
+        .chat-sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            border-left: none;
+        }
+
+        .chat-sidebar.collapsed > * {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Sidebar Toggle Button */
+        .sidebar-toggle {
+            position: fixed;
+            right: 400px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 64px;
+            background: var(--forest-mid);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: right 0.3s ease, background 0.2s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--forest-light);
+        }
+
+        .sidebar-toggle svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--gold);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-toggle.collapsed {
+            right: 0;
+        }
+
+        .sidebar-toggle.collapsed svg {
+            transform: rotate(180deg);
+        }
+
+        .chat-sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: radial-gradient(ellipse at top, rgba(212,175,55,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .chat-header {
+            padding: 28px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+
+        .chat-header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-avatar svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--forest-deep);
+        }
+
+        .chat-header h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--cream);
+        }
+
+        .chat-header p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            min-height: 0; /* Critical for flex child scrolling */
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-message {
+            max-width: 90%;
+            animation: messageIn 0.3s ease;
+        }
+
+        @keyframes messageIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-message.assistant {
+            align-self: flex-start;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+        }
+
+        .message-bubble {
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .chat-message.assistant .message-bubble {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.85);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message.user .message-bubble {
+            background: linear-gradient(135deg, var(--forest-mid), var(--forest-light));
+            color: var(--cream);
+            border-bottom-right-radius: 4px;
+        }
+
+        /* Markdown styles in chat */
+        .message-bubble p {
+            margin: 0 0 12px 0;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-bubble strong {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .message-bubble em {
+            font-style: italic;
+        }
+
+        .message-bubble ul, .message-bubble ol {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .message-bubble li {
+            margin: 4px 0;
+        }
+
+        .message-bubble code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+        }
+
+        .message-bubble pre {
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .message-bubble pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .message-bubble table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+
+        .message-bubble th, .message-bubble td {
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px 10px;
+            text-align: left;
+        }
+
+        .message-bubble th {
+            background: rgba(212,175,55,0.15);
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .message-bubble tr:nth-child(even) {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .message-bubble h1, .message-bubble h2, .message-bubble h3, .message-bubble h4 {
+            color: var(--gold);
+            margin: 12px 0 8px 0;
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .message-bubble h1 { font-size: 18px; }
+        .message-bubble h2 { font-size: 16px; }
+        .message-bubble h3 { font-size: 15px; }
+        .message-bubble h4 { font-size: 14px; }
+
+        .message-bubble blockquote {
+            border-left: 3px solid var(--gold);
+            padding-left: 12px;
+            margin: 8px 0;
+            color: rgba(255,255,255,0.7);
+            font-style: italic;
+        }
+
+        .message-bubble hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 12px 0;
+        }
+
+        /* Quick Questions */
+        .quick-questions {
+            padding: 16px 24px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            flex-shrink: 0;
+        }
+
+        .quick-questions-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .quick-question-btn {
+            display: block;
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-question-btn:hover {
+            background: rgba(212,175,55,0.1);
+            border-color: rgba(212,175,55,0.3);
+            color: var(--cream);
+        }
+
+        /* Chat Input */
+        .chat-input-container {
+            padding: 20px 24px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            flex-shrink: 0;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 6px 6px 6px 18px;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input-wrapper:focus-within {
+            border-color: rgba(212,175,55,0.4);
+            box-shadow: 0 0 0 3px rgba(212,175,55,0.1);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--cream);
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255,255,255,0.35);
+        }
+
+        .chat-send-btn {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .chat-send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(212,175,55,0.4);
+        }
+
+        .chat-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chat-send-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--forest-deep);
+        }
+
+        /* Path C Featured Badge */
+        .path-card.featured {
+            border-color: rgba(212,175,55,0.3);
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            color: var(--forest-deep);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        /* Mobile Chat FAB */
+        .chat-fab {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 4px 20px rgba(212,175,55,0.4);
+            transition: all 0.3s ease;
+        }
+
+        .chat-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 28px rgba(212,175,55,0.5);
+        }
+
+        .chat-fab svg {
+            width: 28px;
+            height: 28px;
+            fill: var(--forest-deep);
+        }
+
+        .chat-fab-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 18px;
+            height: 18px;
+            background: var(--forest-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: white;
+        }
+
+        /* Mobile Chat Modal */
+        .chat-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--forest-deep);
+            z-index: 1002;
+            flex-direction: column;
+        }
+
+        .chat-modal.active {
+            display: flex;
+        }
+
+        .chat-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(180deg, #0d2d24 0%, var(--forest-deep) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .chat-modal-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-modal-close {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-modal-close svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--cream);
+        }
+
+        .chat-modal .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-modal .quick-questions {
+            padding: 12px 16px;
+        }
+
+        .chat-modal .chat-input-container {
+            padding: 16px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+
+        /* Scroll styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(212,175,55,0.3);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(212,175,55,0.5);
+        }
+
+        /* API Key Notice */
+        .api-notice {
+            background: rgba(212,175,55,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 12px 24px;
+            font-size: 12px;
+            color: var(--gold-pale);
+            display: none;
+            flex-shrink: 0;
+        }
+
+        .api-notice.visible {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                height: auto;
+                overflow: visible;
+            }
+
+            .chat-sidebar {
+                display: none;
+            }
+
+            .sidebar-toggle {
+                display: none;
+            }
+
+            .chat-fab {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .main-content {
+                padding: 30px 40px;
+                padding-bottom: 100px;
+                height: auto;
+            }
+
+            .header h1 {
+                font-size: 42px;
+            }
+
+            .deliverables-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pillars-grid.cols-5 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .path-comparison-cards {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 24px 20px;
+                padding-bottom: 100px;
+            }
+
+            .header h1 {
+                font-size: 32px;
+            }
+
+            .path-header {
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+
+            .path-meta {
+                width: 100%;
+                margin-left: 0;
+                justify-content: flex-start;
+            }
+
+            .pillars-grid.cols-5,
+            .pillars-grid.cols-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .path-compare-header h3 {
+                font-size: 20px;
+            }
+
+            .comparison-header h2 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="header-eyebrow">Legacy Investing</div>
+                <h1>Your Path to<br>Wealth Building</h1>
+                <p class="header-subtitle">
+                    Explore each path to find the perfect fit for your goals.
+                    Click to expand and discover <strong>everything included</strong>.
+                </p>
+            </header>
+
+            <div class="paths-container">
+                <!-- PATH A -->
+                <div class="path-card" data-path="a">
+                    <div class="path-header" onclick="togglePath('a')">
+                        <div class="path-badge">A</div>
+                        <div class="path-info">
+                            <div class="path-name">Legacy Wealth Blueprint</div>
+                            <div class="path-tagline">Master the fundamentals of wealth optimization</div>
+                        </div>
+                        <div class="expand-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="path-content">
+                        <div class="path-content-inner">
+                            <div class="deliverables-section">
+                                <div class="section-title">What's Included</div>
+                                <div class="deliverables-grid">
+                                    <div class="deliverable-item" onclick="askAbout('100+ Video Lessons')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">100+ Video Lessons</div>
+                                            <div class="deliverable-value">Lifetime Access</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('1-on-1 Wealth Guide')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">1-on-1 Wealth Guide</div>
+                                            <div class="deliverable-value">Personal mentor</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Wealth Circle Community')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Wealth Circle Community</div>
+                                            <div class="deliverable-value">12 months access</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Personal AI Wealth Advisor')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Personal AI Wealth Advisor</div>
+                                            <div class="deliverable-value">24/7 assistance</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Weekly Coaching')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Weekly Coaching + Replays</div>
+                                            <div class="deliverable-value">Live sessions</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('SOPs and Templates')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">SOPs, Templates & Checklists</div>
+                                            <div class="deliverable-value">Ready to use</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('12-Month Wealth Snapshot')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">12-Month Wealth Snapshot</div>
+                                            <div class="deliverable-value">Personalized roadmap</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Spouse Membership')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">+1 Spouse/Family Membership</div>
+                                            <div class="deliverable-value">Included free</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pillars-section">
+                                <div class="section-title">The Five Pillars Curriculum</div>
+                                <div class="pillars-grid cols-5">
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">01</div>
+                                        <div class="pillar-title">Tax Optimization</div>
+                                        <div class="pillar-desc">Keep $50K-$200K more yearly with legal loopholes the wealthy use</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">STR Loophole Strategy</div>
+                                                <div class="pillar-detail-item">Cost Segregation</div>
+                                                <div class="pillar-detail-item">Augusta Rule</div>
+                                                <div class="pillar-detail-item">Home Office Deduction</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">02</div>
+                                        <div class="pillar-title">Debt & Credit Leverage</div>
+                                        <div class="pillar-desc">Unlock 0% financing & $100K+ business credit lines</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Business Credit Building</div>
+                                                <div class="pillar-detail-item">0% Interest Strategies</div>
+                                                <div class="pillar-detail-item">Credit Optimization</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">03</div>
+                                        <div class="pillar-title">Income Acceleration</div>
+                                        <div class="pillar-desc">Build $5K-$20K/mo passive income streams on autopilot</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Passive Income Models</div>
+                                                <div class="pillar-detail-item">Automation Systems</div>
+                                                <div class="pillar-detail-item">Scaling Strategies</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">04</div>
+                                        <div class="pillar-title">Investment Vehicles</div>
+                                        <div class="pillar-desc">Tax-free compounding & backdoor strategies for 7-figure growth</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Mega Backdoor Roth</div>
+                                                <div class="pillar-detail-item">Self-Directed IRA</div>
+                                                <div class="pillar-detail-item">Tax-Free Growth</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">05</div>
+                                        <div class="pillar-title">Wealth Protection</div>
+                                        <div class="pillar-desc">Lawsuit-proof your assets & build generational wealth</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Asset Protection</div>
+                                                <div class="pillar-detail-item">Entity Structuring</div>
+                                                <div class="pillar-detail-item">Estate Planning</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PATH B -->
+                <div class="path-card" data-path="b">
+                    <div class="path-header" onclick="togglePath('b')">
+                        <div class="path-badge">B</div>
+                        <div class="path-info">
+                            <div class="path-name">Legacy Blueprint + Airbnb Ascension</div>
+                            <div class="path-tagline">6-Month Program: We help you find the lease, then set it up for you</div>
+                        </div>
+                        <div class="expand-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="path-content">
+                        <div class="path-content-inner">
+                            <div class="includes-badge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 12l2 2 4-4"/>
+                                    <circle cx="12" cy="12" r="10"/>
+                                </svg>
+                                Everything in Path A, PLUS:
+                            </div>
+
+                            <div class="deliverables-section">
+                                <div class="section-title">Additional Deliverables</div>
+                                <div class="deliverables-grid">
+                                    <div class="deliverable-item" onclick="askAbout('Dedicated STR Coach')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Dedicated 1-on-1 STR Coach</div>
+                                            <div class="deliverable-value">Personal mentor for Airbnb</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('AirDNA Software')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">AirDNA Software</div>
+                                            <div class="deliverable-value">$14,400/year value included</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Airbnb Ascension Curriculum')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Airbnb Ascension Curriculum</div>
+                                            <div class="deliverable-value">Complete arbitrage training</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Property Profitability Analysis')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Property Profitability Analysis</div>
+                                            <div class="deliverable-value">We analyze deals before you sign</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Uplisting')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Uplisting Channel Management</div>
+                                            <div class="deliverable-value">Annual subscription included</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Market Matrix')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Market Matrix</div>
+                                            <div class="deliverable-value">Top 500 markets ranked</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('AI Advisor for STR')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">AI Advisor</div>
+                                            <div class="deliverable-value">24/7 property decisions</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Scripts and Templates')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Scripts & Templates</div>
+                                            <div class="deliverable-value">Landlord outreach, SOPs</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pillars-section">
+                                <div class="section-title">What We Do For You</div>
+                                <div class="pillars-grid cols-3">
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">01</div>
+                                        <div class="pillar-title">We Help You Acquire the Lease</div>
+                                        <div class="pillar-desc">Training, scripts, roleplay & landlord references</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Finding profitable markets</div>
+                                                <div class="pillar-detail-item">Cold calling scripts</div>
+                                                <div class="pillar-detail-item">Roleplay practice</div>
+                                                <div class="pillar-detail-item">Landlord references</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">02</div>
+                                        <div class="pillar-title">We Set Up All Operations</div>
+                                        <div class="pillar-desc">Listing, furnishing & guest communication systems</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Design & furnishing guidance</div>
+                                                <div class="pillar-detail-item">Multi-platform listing</div>
+                                                <div class="pillar-detail-item">Copy & photo optimization</div>
+                                                <div class="pillar-detail-item">Guest templates</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">03</div>
+                                        <div class="pillar-title">We Automate Your Pricing</div>
+                                        <div class="pillar-desc">Dynamic pricing & hands-off management SOPs</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Dynamic pricing strategy</div>
+                                                <div class="pillar-detail-item">Automated pricing tools</div>
+                                                <div class="pillar-detail-item">Messaging automation</div>
+                                                <div class="pillar-detail-item">Operations SOPs</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PATH C -->
+                <div class="path-card featured" data-path="c">
+                    <span class="featured-badge">~14 Spots Available</span>
+                    <div class="path-header" onclick="togglePath('c')">
+                        <div class="path-badge">C</div>
+                        <div class="path-info">
+                            <div class="path-name">Legacy Blueprint + STR Concierge</div>
+                            <div class="path-tagline">We find, buy & set up your property for you (Rental Arbitrage via Ownership)</div>
+                        </div>
+                        <div class="expand-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="path-content">
+                        <div class="path-content-inner">
+                            <div class="includes-badge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 12l2 2 4-4"/>
+                                    <circle cx="12" cy="12" r="10"/>
+                                </svg>
+                                Everything in Path A, PLUS:
+                            </div>
+
+                            <div class="deliverables-section">
+                                <div class="section-title">Done-For-You Deliverables</div>
+                                <div class="deliverables-grid">
+                                    <div class="deliverable-item" onclick="askAbout('Deal Sourcing')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Multiple Properties Analyzed & Underwritten</div>
+                                            <div class="deliverable-value">We find the best deals for you</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Tax Entity Setup')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Tax + Entity Structure Setup</div>
+                                            <div class="deliverable-value">Optimized from day one</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Full Operations Setup')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Done-For-You Full Operations</div>
+                                            <div class="deliverable-value">Complete setup handled</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Cost Segregation')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Cost Segregation Coordination</div>
+                                            <div class="deliverable-value">30% accelerated depreciation</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('AirDNA for Path C')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">AirDNA Software</div>
+                                            <div class="deliverable-value">$14,400/year license</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Uplisting for Path C')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Uplisting</div>
+                                            <div class="deliverable-value">$995/year license</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('STR Video Training')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">STR Video Training</div>
+                                            <div class="deliverable-value">Complete curriculum</div>
+                                        </div>
+                                    </div>
+                                    <div class="deliverable-item" onclick="askAbout('Vetted Partner Network')">
+                                        <div class="deliverable-check">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <path d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="deliverable-text">Vetted Partner Network</div>
+                                            <div class="deliverable-value">Lenders, CPAs, agents</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pillars-section">
+                                <div class="section-title">Complete Done-For-You Service</div>
+                                <div class="pillars-grid cols-2">
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">01</div>
+                                        <div class="pillar-title">We Find & Structure Your Deal</div>
+                                        <div class="pillar-desc">Discovery, sourcing, underwriting, negotiation & tax setup</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Define your buy-box criteria</div>
+                                                <div class="pillar-detail-item">Source 5-10 properties</div>
+                                                <div class="pillar-detail-item">Full underwriting analysis</div>
+                                                <div class="pillar-detail-item">Negotiation support</div>
+                                                <div class="pillar-detail-item">Entity & tax structure</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pillar-card" onclick="togglePillar(this)">
+                                        <div class="pillar-num">02</div>
+                                        <div class="pillar-title">We Launch Your STR Operations</div>
+                                        <div class="pillar-desc">Listing creation, tech stack, automation & SOPs</div>
+                                        <div class="pillar-detail">
+                                            <div class="pillar-detail-inner">
+                                                <div class="pillar-detail-item">Multi-platform listings</div>
+                                                <div class="pillar-detail-item">Direct booking website</div>
+                                                <div class="pillar-detail-item">Tech stack setup</div>
+                                                <div class="pillar-detail-item">Automation systems</div>
+                                                <div class="pillar-detail-item">Performance reviews included</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Path Comparison Cards -->
+            <div class="comparison-section">
+                <div class="comparison-header">
+                    <h2>Choose Your Path</h2>
+                    <p class="comparison-subtitle">Compare what's included in each program</p>
+                </div>
+                <div class="path-comparison-cards">
+                    <!-- Path A Card -->
+                    <div class="path-compare-card">
+                        <div class="path-compare-header">
+                            <div class="path-compare-label">PATH A</div>
+                            <h3>Legacy Wealth Blueprint</h3>
+                        </div>
+                        <div class="path-compare-items">
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>100+ Video Lessons (Lifetime Access)</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>1-on-1 Wealth Guide</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Wealth Circle Community (12 months)</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Personal AI Wealth Advisor</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Weekly Coaching + Replays</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>SOPs, Templates & Checklists</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>12 Month Wealth Snapshot</span>
+                            </div>
+                        </div>
+                        <div class="path-compare-footer">
+                            <div class="best-for-label">BEST FOR:</div>
+                            <p>Self-starters who want to learn and implement wealth strategies — optimizing taxes, debt, and investment portfolio</p>
+                        </div>
+                    </div>
+
+                    <!-- Path B Card -->
+                    <div class="path-compare-card">
+                        <div class="path-compare-header">
+                            <div class="path-compare-label">PATH B</div>
+                            <h3>Legacy Wealth Blueprint + Airbnb Ascension</h3>
+                        </div>
+                        <div class="path-compare-includes">Everything in Path A, PLUS:</div>
+                        <div class="path-compare-items">
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Dedicated 1-on-1 STR Coach</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>AirDNA Software ($14,400 value)</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Done-For-You Listing Setup</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Uplisting (Annual Subscription)</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Airbnb Arbitrage Roadmap Course</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Plug & Play Checklist Templates + SOPs</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Market Matrix (500+ markets)</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Property Profitability Analysis</span>
+                            </div>
+                        </div>
+                        <div class="path-compare-footer">
+                            <div class="best-for-label">BEST FOR:</div>
+                            <p>Those who want guidance and tools to build their Airbnb arbitrage business while generating monthly cash flow</p>
+                        </div>
+                    </div>
+
+                    <!-- Path C Card -->
+                    <div class="path-compare-card featured">
+                        <div class="spots-badge">~14 SPOTS AVAILABLE</div>
+                        <div class="path-compare-header">
+                            <div class="path-compare-label">PATH C</div>
+                            <h3>Legacy Wealth Blueprint + STR Concierge</h3>
+                        </div>
+                        <div class="path-compare-includes">Everything in Path A, PLUS:</div>
+                        <div class="path-compare-items">
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Multiple Properties Analyzed for You</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Tax + Entity Structure Setup</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Done-For-You Full Operations Setup</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Cost Segregation Coordination</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>AirDNA Software</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Uplisting (Annual Subscription)</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Short Term Rental Video Training</span>
+                            </div>
+                            <div class="path-compare-item">
+                                <span class="check-icon">✓</span>
+                                <span>Vetted Partner Network Access</span>
+                            </div>
+                        </div>
+                        <div class="path-compare-footer">
+                            <div class="best-for-label">BEST FOR:</div>
+                            <p>Busy professionals who want it all: maximum cashflow, tax savings, and long-term wealth building with equity</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decision Framework Section -->
+            <div class="decision-framework" style="margin-top: 60px; padding: 40px; background: linear-gradient(135deg, rgba(15,76,58,0.3) 0%, rgba(10,61,47,0.5) 100%); border: 1px solid rgba(212,175,55,0.15); border-radius: 20px; text-align: center;">
+                <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 36px; color: var(--cream); margin-bottom: 16px;">Which Path Is Right For You?</h2>
+                <p style="color: rgba(255,255,255,0.6); font-size: 16px; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">Not sure which program fits your situation? Here's a simple breakdown:</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; text-align: left;">
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px; border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="font-family: 'Cormorant Garamond', serif; font-size: 48px; color: var(--gold); margin-bottom: 8px;">A</div>
+                        <h3 style="font-size: 20px; color: var(--cream); margin-bottom: 12px;">Just Starting?</h3>
+                        <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">You want to learn the fundamentals of wealth building—taxes, debt, investing, and business structures.</p>
+                        <div style="font-size: 13px; color: var(--gold); font-weight: 600;">→ Legacy Wealth Blueprint</div>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px; border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="font-family: 'Cormorant Garamond', serif; font-size: 48px; color: var(--gold); margin-bottom: 8px;">B</div>
+                        <h3 style="font-size: 20px; color: var(--cream); margin-bottom: 12px;">Want Cash Flow?</h3>
+                        <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">You want to generate monthly income through rental arbitrage (rent properties, list on Airbnb) with our guidance.</p>
+                        <div style="font-size: 13px; color: var(--gold); font-weight: 600;">→ Legacy + Airbnb Ascension</div>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px; border: 1px solid rgba(212,175,55,0.3); box-shadow: 0 0 0 1px rgba(212,175,55,0.1);">
+                        <div style="font-family: 'Cormorant Garamond', serif; font-size: 48px; color: var(--gold); margin-bottom: 8px;">C</div>
+                        <h3 style="font-size: 20px; color: var(--cream); margin-bottom: 12px;">Want Tax Savings?</h3>
+                        <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">You want us to find, buy, and set up a property for you. Maximum tax benefits with minimal time investment.</p>
+                        <div style="font-size: 13px; color: var(--gold); font-weight: 600;">→ Legacy + STR Concierge</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 40px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <p style="color: rgba(255,255,255,0.8); font-size: 18px; margin-bottom: 24px;">Ready to discuss your specific situation?</p>
+                    <button onclick="askQuestion('I want to book a call with my wealth advisor')" style="background: linear-gradient(135deg, var(--gold), var(--gold-light)); color: var(--forest-deep); border: none; padding: 16px 32px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-family: 'DM Sans', sans-serif;">Book Your Call With Your Wealth Advisor</button>
+                </div>
+            </div>
+
+            <!-- Disclaimers -->
+            <div style="margin-top: 50px; padding: 24px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <p style="font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.8; margin: 0;">
+                    <strong style="color: rgba(255,255,255,0.6);">Important Disclaimers:</strong> Results may vary based on market conditions, individual effort, property performance, and other factors. The information provided is for educational purposes only and does not constitute financial, tax, or legal advice. Please consult with your CPA, attorney, and financial advisor before making any investment decisions. Real estate investing involves risk, including potential loss of capital. Past performance does not guarantee future results. Tax savings and cash flow figures are estimates and will vary based on individual circumstances.
+                </p>
+            </div>
+        </main>
+
+        <!-- Chat Sidebar - Desktop -->
+        <aside class="chat-sidebar" id="desktopChat">
+            <div class="chat-header">
+                <div class="chat-header-title">
+                    <div class="chat-avatar">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                    </div>
+                    <h3>Wealth Advisor</h3>
+                </div>
+                <p>Ask me anything about paths, deliverables, or what's right for you.</p>
+            </div>
+
+            <div class="api-notice" id="apiNotice">
+                AI is powered by MiniMax M2.1 via OpenRouter.
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-message assistant">
+                    <div class="message-bubble">
+                        Welcome! I'm here to help you explore the Legacy Investing paths. Click on any deliverable to learn more, or ask me questions about which path might be right for your situation.
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-questions">
+                <div class="quick-questions-label">Quick Questions</div>
+                <button class="quick-question-btn" onclick="askQuestion('Which path is right if I have $120K to deploy?')">
+                    Which path if I have $120K+ to deploy?
+                </button>
+                <button class="quick-question-btn" onclick="askQuestion('What is the STR Loophole and how does it work?')">
+                    What is the STR Loophole?
+                </button>
+                <button class="quick-question-btn" onclick="askQuestion('How does cost segregation save me money?')">
+                    How does cost segregation work?
+                </button>
+            </div>
+
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Ask about paths, deliverables..." onkeypress="handleKeyPress(event)">
+                    <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Mobile Chat FAB -->
+    <button class="chat-fab" id="chatFab" onclick="openMobileChat()">
+        <svg viewBox="0 0 24 24">
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+        </svg>
+    </button>
+
+    <!-- Mobile Chat Modal -->
+    <div class="chat-modal" id="chatModal">
+        <div class="chat-modal-header">
+            <div class="chat-modal-header-left">
+                <div class="chat-avatar">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                </div>
+                <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 20px; color: var(--cream);">Wealth Advisor</h3>
+            </div>
+            <button class="chat-modal-close" onclick="closeMobileChat()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="chat-messages" id="mobileMessages">
+            <div class="chat-message assistant">
+                <div class="message-bubble">
+                    Welcome! I'm here to help you explore the Legacy Investing paths. Ask me anything about which path is right for you.
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-questions">
+            <div class="quick-questions-label">Quick Questions</div>
+            <button class="quick-question-btn" onclick="askQuestion('Which path is right if I have $120K to deploy?')">
+                Which path if I have $120K+ to deploy?
+            </button>
+            <button class="quick-question-btn" onclick="askQuestion('What is the STR Loophole?')">
+                What is the STR Loophole?
+            </button>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input type="text" class="chat-input" id="mobileChatInput" placeholder="Ask about paths..." onkeypress="handleMobileKeyPress(event)">
+                <button class="chat-send-btn" id="mobileSendBtn" onclick="sendMobileMessage()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION
+        // ==========================================
+        // API key is stored securely in Vercel environment variables
+        // Requests go through /api/chat serverless function
+        const CONFIG = {
+            API_ENDPOINT: '/api/chat', // Vercel serverless function (API key stored server-side)
+            MODEL: 'minimax/minimax-m2.1', // MiniMax M2.1 - fast, 196K context ($0.27/$1.10 per 1M tokens)
+            APP_NAME: 'Legacy Path Explorer'
+        };
+
+        // API is configured via Vercel environment variables
+        function isAPIConfigured() {
+            return true; // Will fail gracefully if env var not set
+        }
+
+        // ==========================================
+        // SYSTEM PROMPT - All Legacy Investing Knowledge
+        // ==========================================
+        const SYSTEM_PROMPT = `You are a friendly and knowledgeable Wealth Advisor for Legacy Investing. Your role is to help potential clients understand the different programs and services offered, answer questions about wealth-building strategies, and guide them toward the program that best fits their situation.
+
+## About Legacy Investing
+
+Legacy Investing helps high-income earners build wealth through tax optimization, short-term rental (STR) strategies, and comprehensive wealth education. The program was founded by Preston Seo, who built an eight-figure investment portfolio after starting from humble beginnings. The mission is to help people break the "middle-class loop" and build generational wealth.
+
+### Who This Is For
+- W2 professionals earning over $100,000 who feel like they're not building real wealth
+- People who followed every rule—worked hard, saved what they could—but still feel nowhere near financial freedom
+- Those who don't want to get rich overnight but want a plan that grows quietly in the background
+- High earners whose wealth is being eaten by taxes, inflation, and bad structure
+- Anyone who wants to build wealth that gets bigger with every generation and break the cycle of passing down stress instead of assets
+
+## The Three Programs
+
+### PROGRAM 1: Legacy Wealth Blueprint
+The foundational education program. Best for self-starters who want to learn and implement wealth strategies themselves.
+
+**Course & Content (Lifetime Access):**
+- 100+ Video Lessons covering all five wealth-building pillars
+- Comprehensive curriculum on taxes, debt, investing, real estate, and business structures
+
+**Support & Community (12 Months Access):**
+- 1-on-1 Wealth Guide - Personal mentor with bi-weekly check-ins, priority access, direct messaging
+- Wealth Circle Community - Private network of wealth builders on the same journey
+- Personal AI Wealth Advisor - 24/7 assistance for questions and scenario analysis
+- Weekly Live Coaching + Replays
+- SOPs, Templates & Checklists - Ready-to-use resources
+- 12-Month Wealth Strategy Snapshot - Personalized roadmap based on your specific situation
+- +1 Spouse/Family Membership included free
+
+**The Five Pillars Curriculum:**
+1. Tax Optimization - Legal strategies the wealthy use (STR loophole, cost segregation, Augusta Rule, home office deductions)
+2. Debt & Credit Leverage - Unlock 0% financing and business credit lines
+3. Income Acceleration - Build passive income streams
+4. Investment Vehicles - Mega Backdoor Roth, Self-Directed IRA, tax-free growth strategies
+5. Wealth Protection - Asset protection, entity structuring, estate planning
+
+**Time Commitment:** 1-2 hours per week
+**Best For:** Those who want to optimize their taxes, debt, and investment portfolio and are willing to execute the roadmap themselves
+
+---
+
+### PROGRAM 2: Airbnb Ascension
+**NOTE:** This can be purchased standalone OR bundled with Legacy Wealth Blueprint as "Path B"
+
+A 6-month guided program where we help you launch a rental arbitrage business. You rent properties long-term and list them on Airbnb/VRBO for monthly cash flow.
+
+**How It Works:**
+- **Phase 1 (Months 1-4):** We coach and guide you through finding a property, analyzing markets, and securing a lease
+- **Phase 2 (Months 4-6):** Once you secure the lease, we handle the initial setup and operations
+
+**Included:**
+- Dedicated 1-on-1 STR Coach - Your personal mentor who has actually done this
+- AirDNA Software ($14,400/year value) - Premium market research tool for STR
+- Airbnb Ascension Curriculum - Complete step-by-step arbitrage training
+- Property Profitability Analysis - We analyze deals before you sign
+- Uplisting Channel Management ($995/year value) - All-in-one platform to sync listings across Airbnb, VRBO, Booking.com
+- Market Matrix - Top 500 markets ranked and analyzed
+- Scripts & Templates for landlord outreach, lease negotiation, and operations
+
+**What We Do For You:**
+1. **Help You Acquire the Lease** - Training on finding profitable markets and properties, cold calling scripts, roleplay practice, lease negotiation playbook, and our coaches vouch for you with landlords as references
+2. **Set Up All Operations** - Design guidance, multi-platform listing creation, photo optimization, guest communication templates
+3. **Automate Your Pricing** - Dynamic pricing setup, automation tools, messaging systems, SOPs for ongoing management
+
+**Important Clarifications:**
+- This is a 6-month program total - you need to find and secure a property within the first ~4 months so we have time to set it up
+- We help you FIND the property (Phase 1), then we SET IT UP for you (Phase 2)
+- This is NOT ongoing property management - we do the initial launch and setup, then you manage it
+
+**Time Commitment:** 2-3 hours per week during property search, then minimal once operational
+**Best For:** Those who want cash flow through rental arbitrage without buying property, willing to hustle to find the right lease
+
+---
+
+### PROGRAM 3: STR Concierge
+**NOTE:** This can be purchased standalone OR bundled with Legacy Wealth Blueprint as "Path C"
+
+Complete done-for-you property ownership service. We find, buy, and set up a short-term rental property for you. Because you own the property, you get maximum tax benefits including the STR loophole and cost segregation.
+
+**How It Works:**
+- **Phase 1:** We source properties, analyze deals, negotiate, and handle the purchase
+- **Phase 2:** We set up all operations including listings, pricing, automation, and SOPs
+
+**Done-For-You Deliverables:**
+- Multiple properties analyzed and underwritten - We find the best deals for you based on your criteria
+- Tax + Entity Structure Setup - LLC and tax optimization from day one
+- Done-For-You Full Operations Setup - We literally log in and set up everything (not tutorials, we do the work)
+- Cost Segregation Coordination - Accelerated depreciation for tax savings
+- AirDNA Software ($14,400/year value)
+- Uplisting Channel Management ($995/year value)
+- STR Video Training - Complete curriculum
+- Direct booking website setup
+- Vetted Partner Network - Pre-screened DSCR lenders, CPAs who know real estate, agents, designers, and property managers
+- Performance reviews and optimization
+
+**What We Do For You:**
+1. **Find & Structure Your Deal** - Discovery call to define your criteria, source and analyze properties, full market analysis, offer negotiation, due diligence, tax and entity setup
+2. **Launch Your STR Operations** - Multi-platform listings, direct booking website, tech stack integration, automated guest messaging, full operational playbook and SOPs, cleaner hiring guidance, emergency response systems
+
+**Important Clarifications:**
+- Limited spots available (~14 currently)
+- You need capital to buy a property (typically $120K+ including down payment and reserves)
+- This is property OWNERSHIP, not rental arbitrage - you buy the property
+- You get maximum tax benefits because you own the asset
+- We do the setup, but this is NOT ongoing property management - you can self-manage or hire a property manager
+
+**Time Commitment:** 5-10 hours TOTAL (we handle everything)
+**Best For:** Busy professionals who want maximum tax benefits, equity building, and cash flow with minimal time investment
+
+---
+
+## Key Distinctions
+
+**Rental Arbitrage vs Property Ownership:**
+- **Airbnb Ascension (Program 2):** You RENT the property, we help you find it and set it up. Lower startup cost, no equity building, limited tax benefits.
+- **STR Concierge (Program 3):** You BUY the property, we find it and set it up for you. Higher capital requirement, equity building, maximum tax benefits.
+
+**Standalone vs Bundled:**
+- Legacy Wealth Blueprint can be purchased alone
+- Airbnb Ascension can be purchased alone OR bundled with Legacy Wealth Blueprint (Path B)
+- STR Concierge can be purchased alone OR bundled with Legacy Wealth Blueprint (Path C)
+- We typically recommend the bundled paths because the foundational education in Legacy Wealth Blueprint is critical context for the advanced programs
+
+---
+
+## Key Tax Strategies Explained
+
+### STR Loophole (Short-Term Rental Loophole)
+The Short-Term Rental loophole allows rental losses to offset W-2 income directly when:
+- Average guest stay is 7 days or less
+- You materially participate (100+ hours/year, or more hours than anyone else involved)
+
+The key: You don't have to actually lose money. You need to show a "paper loss" on taxes through depreciation and write-offs. Combined with cost segregation, this can generate significant tax savings.
+
+**Only applies to:** Property OWNERS (Program 3 / Path C), not rental arbitrage (Program 2 / Path B)
+
+### Cost Segregation + Bonus Depreciation
+Instead of depreciating a property over 27.5 years, cost segregation breaks it into smaller components (walls, flooring, appliances, fixtures) that depreciate over 5-15 years. With bonus depreciation, you can deduct a significant portion in year one.
+
+**Example:** On a $500K property, you might get substantial first-year depreciation, potentially saving tens of thousands in taxes.
+
+### Mega Backdoor Roth
+Normal Roth IRA limits cap you at $7,500/year (or $8,600 if over 50), and high earners get blocked by income limits. The Mega Backdoor Roth lets you contribute $70,000+ per year through after-tax 401(k) contributions and conversion to Roth. Every dollar grows 100% tax-free forever.
+
+### Augusta Rule (Section 280A)
+Rent your home to your business for up to 14 days per year. The income is completely tax-free to you, and your business deducts it as an expense.
+
+### Home Office Deduction
+If you run any business from home (even part-time), deduct a portion of your mortgage/rent, utilities, and internet based on square footage percentage.
+
+---
+
+## Pricing Information
+
+When asked about pricing:
+
+**Default Response:**
+"Pricing depends on your specific situation and which level of support you need. We have different tiers and options available, including standalone programs and bundled paths. The best way to get accurate pricing for your situation is to book a call with our team."
+
+**If They Push for a Range:**
+"If you need a general range to consider, our programs range from $7,000 to $20,000 depending on which program you choose and what level of support you need. But the exact investment depends on your specific goals and situation, which is why we recommend a call to discuss."
+
+**Key Points:**
+- Don't give exact prices without understanding their situation
+- Emphasize that different paths have different investment levels
+- Mention that standalone options exist but bundles are typically recommended
+- Always direct them to book a call for specific pricing
+
+---
+
+## Choosing the Right Program
+
+**Choose Legacy Wealth Blueprint if:**
+- You want to learn and implement strategies yourself
+- You have time to dedicate (1-2 hours/week)
+- You want broad wealth education across all five pillars
+- You're focused on optimizing your current situation (taxes, debt, investments)
+
+**Choose Airbnb Ascension if:**
+- You want cash flow through rental arbitrage
+- You're willing to hustle to find the right property/lease
+- You have $5-15K to start an arbitrage property
+- You want hands-on coaching and tools to build an STR business
+- You don't want to buy property
+
+**Choose STR Concierge if:**
+- You have capital to buy a property (typically $120K+)
+- You want maximum tax benefits through property ownership
+- You prefer a complete done-for-you service
+- You want to build equity and long-term wealth
+- You're a busy professional with only 5-10 hours total to spare
+- You want the "trifecta": cash flow + tax savings + equity building
+
+---
+
+## The Problem We Solve
+
+Most high earners face these interconnected issues:
+- **Taxes:** Overpaying significantly by missing basic deductions, credits, and legal structures
+- **Debt:** Paying mostly interest for the first 13 years of a 30-year mortgage
+- **Cash Flow:** Living paycheck to paycheck despite six-figure incomes
+- **No System:** Money disappears faster than it comes in with no clear path to financial freedom
+- **401(k) Trap:** Wall Street takes 1-2% in fees annually, and the IRS taxes withdrawals
+
+The system wasn't designed to help you build wealth—it was designed to move money out of your hands. We teach you the same strategies the wealthy use to keep and grow their money.
+
+---
+
+## Important Disclaimers to Include
+
+Always include these disclaimers when discussing results, returns, or tax savings:
+
+- "Results may vary based on market conditions, individual effort, property performance, and other factors."
+- "This is not financial, tax, or legal advice. Please consult with your CPA and attorney."
+- "Real estate investing involves risk, including potential loss of capital."
+- "Past performance does not guarantee future results."
+- "Tax savings and cash flow figures are estimates and will vary based on individual circumstances."
+
+---
+
+## Response Guidelines
+
+1. Be helpful, friendly, and concise—like talking to a knowledgeable friend
+2. Ask clarifying questions about their situation (income, capital available, time, goals) to give personalized recommendations
+3. Explain concepts simply without jargon—make taxes and real estate accessible
+4. Always relate answers back to how Legacy Investing can help them specifically
+5. If asked about pricing, use the guidelines above—start general, provide range only if pushed
+6. Encourage them to book a sales call to discuss their specific situation—every situation is unique
+7. Never make guarantees about specific dollar amounts—use ranges and "potential" language
+8. Share relevant tax strategies when discussing financial goals
+9. Emphasize the limited spots for STR Concierge when relevant (~14 available)
+10. Always include appropriate disclaimers when discussing results or returns
+11. Be clear about the difference between rental arbitrage (Airbnb Ascension) and property ownership (STR Concierge)
+12. Remember: people aren't here to clip coupons—they want to build real wealth that lasts across generations`;
+
+        // ==========================================
+        // CHAT STATE
+        // ==========================================
+        let conversationHistory = [];
+        let isGenerating = false;
+
+        // ==========================================
+        // PATH & PILLAR TOGGLE FUNCTIONALITY
+        // ==========================================
+        function togglePath(pathId) {
+            const card = document.querySelector(`[data-path="${pathId}"]`);
+            const wasExpanded = card.classList.contains('expanded');
+
+            document.querySelectorAll('.path-card').forEach(c => {
+                c.classList.remove('expanded');
+            });
+
+            if (!wasExpanded) {
+                card.classList.add('expanded');
+            }
+        }
+
+        function togglePillar(element) {
+            event.stopPropagation();
+            element.classList.toggle('expanded');
+        }
+
+        // ==========================================
+        // MOBILE CHAT FUNCTIONS
+        // ==========================================
+        function openMobileChat() {
+            document.getElementById('chatModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileChat() {
+            document.getElementById('chatModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // ==========================================
+        // CHAT UI FUNCTIONS
+        // ==========================================
+        function addMessage(content, isUser = false, targetId = 'chatMessages') {
+            const containers = [
+                document.getElementById('chatMessages'),
+                document.getElementById('mobileMessages')
+            ];
+
+            containers.forEach(container => {
+                if (container) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `chat-message ${isUser ? 'user' : 'assistant'}`;
+                    messageDiv.innerHTML = `<div class="message-bubble">${content}</div>`;
+                    container.appendChild(messageDiv);
+                    container.scrollTop = container.scrollHeight;
+                }
+            });
+        }
+
+        function showTyping() {
+            const containers = [
+                document.getElementById('chatMessages'),
+                document.getElementById('mobileMessages')
+            ];
+
+            containers.forEach(container => {
+                if (container) {
+                    const typingDiv = document.createElement('div');
+                    typingDiv.className = 'chat-message assistant typing-message';
+                    typingDiv.innerHTML = `
+                        <div class="typing-indicator">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    `;
+                    container.appendChild(typingDiv);
+                    container.scrollTop = container.scrollHeight;
+                }
+            });
+        }
+
+        function hideTyping() {
+            document.querySelectorAll('.typing-message').forEach(el => el.remove());
+        }
+
+        function createStreamingMessage() {
+            const containers = [
+                document.getElementById('chatMessages'),
+                document.getElementById('mobileMessages')
+            ];
+
+            containers.forEach(container => {
+                if (container) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'chat-message assistant streaming-message';
+                    messageDiv.innerHTML = `<div class="message-bubble"></div>`;
+                    container.appendChild(messageDiv);
+                    container.scrollTop = container.scrollHeight;
+                }
+            });
+        }
+
+        function updateStreamingMessage(content) {
+            document.querySelectorAll('.streaming-message .message-bubble').forEach(bubble => {
+                bubble.innerHTML = content;
+                bubble.closest('.chat-messages').scrollTop = bubble.closest('.chat-messages').scrollHeight;
+            });
+        }
+
+        function finalizeStreamingMessage() {
+            document.querySelectorAll('.streaming-message').forEach(el => {
+                el.classList.remove('streaming-message');
+            });
+        }
+
+        function setButtonsDisabled(disabled) {
+            document.getElementById('sendBtn').disabled = disabled;
+            document.getElementById('mobileSendBtn').disabled = disabled;
+            isGenerating = disabled;
+        }
+
+        // ==========================================
+        // OPENROUTER API INTEGRATION
+        // ==========================================
+        async function streamChatResponse(userMessage) {
+            if (!isAPIConfigured()) {
+                return fallbackResponse(userMessage);
+            }
+
+            conversationHistory.push({ role: 'user', content: userMessage });
+
+            try {
+                const response = await fetch(CONFIG.API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: CONFIG.MODEL,
+                        messages: [
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            ...conversationHistory
+                        ],
+                        stream: true,
+                        max_tokens: 800,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let fullContent = '';
+
+                hideTyping();
+                createStreamingMessage();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+
+                    while (true) {
+                        const lineEnd = buffer.indexOf('\n');
+                        if (lineEnd === -1) break;
+
+                        const line = buffer.slice(0, lineEnd).trim();
+                        buffer = buffer.slice(lineEnd + 1);
+
+                        if (!line || line.startsWith(':')) continue;
+
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') {
+                                finalizeStreamingMessage();
+                                conversationHistory.push({ role: 'assistant', content: fullContent });
+                                return;
+                            }
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                const content = parsed.choices[0]?.delta?.content;
+                                if (content) {
+                                    fullContent += content;
+                                    updateStreamingMessage(formatMessage(fullContent));
+                                }
+                            } catch (e) {
+                                // Skip malformed JSON
+                            }
+                        }
+                    }
+                }
+
+                finalizeStreamingMessage();
+                conversationHistory.push({ role: 'assistant', content: fullContent });
+
+            } catch (error) {
+                console.error('API Error:', error);
+                hideTyping();
+                addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment, or feel free to explore the paths above!");
+            }
+        }
+
+        function formatMessage(text) {
+            // Use marked.js for full markdown support
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true
+                });
+                return marked.parse(text);
+            }
+            // Fallback if marked isn't loaded
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // ==========================================
+        // FALLBACK RESPONSES (No API Key)
+        // ==========================================
+        function fallbackResponse(question) {
+            const q = question.toLowerCase();
+            let answer = '';
+
+            if (q.includes('path a') || q.includes('blueprint')) {
+                answer = "Path A is the Legacy Wealth Blueprint - our foundational education program. It includes 100+ video lessons, a personal Wealth Guide, the Wealth Circle Community, AI Advisor, weekly coaching, and a personalized 12-month wealth snapshot. It focuses on tax optimization, debt leverage, income acceleration, investment vehicles, and wealth protection. Best for self-starters who want to learn and implement strategies themselves.";
+            } else if (q.includes('path b') || q.includes('airbnb') || q.includes('ascension')) {
+                answer = "Path B includes everything in Path A PLUS the Airbnb Ascension program. You get a dedicated STR Coach, AirDNA software ($14,400 value), Property Profitability Analysis, Uplisting, and Market Matrix. We help you acquire leases, set up operations, and automate pricing. Best for generating $2K+/month cash flow per property without owning real estate.";
+            } else if (q.includes('path c') || q.includes('concierge') || q.includes('done')) {
+                answer = "Path C is our premium Done-For-You STR Concierge service. We source 5-10 deals for you, handle tax & entity setup, coordinate cost segregation, and launch full operations. Only 20 spots available. Best for busy professionals wanting maximum tax savings ($50K+) plus cash flow and equity building with minimal time investment.";
+            } else if (q.includes('str loophole') || q.includes('short-term rental loophole')) {
+                answer = "The STR Loophole allows rental losses to offset your W-2 income directly. When your property averages 7 days or less per stay and you materially participate (100+ hours/year), losses aren't treated as passive. Combined with cost segregation, you can see $50K+ in tax savings in year one. This is one of the most powerful legal tax strategies available.";
+            } else if (q.includes('cost segregation')) {
+                answer = "Cost segregation accelerates depreciation on real estate. Instead of depreciating over 27.5 years, a study identifies components (appliances, flooring, fixtures) that can depreciate over 5-15 years. On a $500K property, you might get $150K in first-year depreciation, saving $55K+ at a 37% tax bracket. It's IRS-approved and included in Path C.";
+            } else if (q.includes('120k') || q.includes('capital') || q.includes('invest')) {
+                answer = "If you have $120K+ to deploy, Path C (STR Concierge) is designed for you. It maximizes tax savings through property ownership, cost segregation, and the STR loophole. You get equity building, cash flow of $1.5-2.5K/month, and $50K+ in year one tax savings. We handle everything - only 5-10 hours of your time total.";
+            } else if (q.includes('arbitrage')) {
+                answer = "STR Arbitrage is the model taught in Path B. You rent properties on long-term leases, then list them on Airbnb and VRBO. No ownership required - just $5-15K startup cost. You can generate $2K+/month per property in cash flow. We provide training, scripts, and analysis to help you succeed.";
+            } else if (q.includes('time') || q.includes('commitment')) {
+                answer = "Time requirements vary by path: Path A needs 1-2 hours weekly for learning. Path B requires 2-3 hours weekly to manage arbitrage properties. Path C is the most hands-off at only 5-10 hours TOTAL - we handle everything for you.";
+            } else {
+                answer = "I can help you understand any aspect of the Legacy Investing paths! Try asking about specific deliverables, tax strategies like the STR loophole or cost segregation, or which path might fit your situation. You can also click on any item in the path explorer to learn more about it.";
+            }
+
+            hideTyping();
+            addMessage(answer);
+        }
+
+        // ==========================================
+        // MESSAGE HANDLING
+        // ==========================================
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message || isGenerating) return;
+
+            addMessage(message, true);
+            input.value = '';
+            setButtonsDisabled(true);
+            showTyping();
+
+            if (isAPIConfigured()) {
+                await streamChatResponse(message);
+            } else {
+                setTimeout(() => fallbackResponse(message), 600);
+            }
+
+            setButtonsDisabled(false);
+        }
+
+        async function sendMobileMessage() {
+            const input = document.getElementById('mobileChatInput');
+            const message = input.value.trim();
+            if (!message || isGenerating) return;
+
+            addMessage(message, true);
+            input.value = '';
+            setButtonsDisabled(true);
+            showTyping();
+
+            if (isAPIConfigured()) {
+                await streamChatResponse(message);
+            } else {
+                setTimeout(() => fallbackResponse(message), 600);
+            }
+
+            setButtonsDisabled(false);
+        }
+
+        function askQuestion(question) {
+            const isMobile = window.innerWidth <= 1200;
+            if (isMobile) {
+                openMobileChat();
+                document.getElementById('mobileChatInput').value = question;
+                setTimeout(() => sendMobileMessage(), 100);
+            } else {
+                document.getElementById('chatInput').value = question;
+                sendMessage();
+            }
+        }
+
+        function askAbout(topic) {
+            askQuestion(`Tell me more about ${topic}`);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !isGenerating) {
+                sendMessage();
+            }
+        }
+
+        function handleMobileKeyPress(event) {
+            if (event.key === 'Enter' && !isGenerating) {
+                sendMobileMessage();
+            }
+        }
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        setTimeout(() => {
+            togglePath('a');
+        }, 500);
+    </script>
+</body>
+</html>
